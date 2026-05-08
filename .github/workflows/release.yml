@@ -47,8 +47,26 @@ jobs:
             echo "should_release=false" >> "$GITHUB_OUTPUT"
 
             TAG="v$LOCAL_VERSION"
-            REQUIRED_ASSETS=$(gh release view "$TAG" --json assets --jq '[.assets[].name] | map(select(. == "zero-native-darwin-arm64" or . == "CHECKSUMS.txt")) | length' 2>/dev/null || echo "0")
-            if [ "$REQUIRED_ASSETS" -ge 2 ]; then
+            EXISTING_ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null || true)
+            missing=0
+            for asset in \
+              CHECKSUMS.txt \
+              zero-native-darwin-arm64 \
+              zero-native-darwin-x64 \
+              zero-native-linux-arm64 \
+              zero-native-linux-x64 \
+              zero-native-linux-musl-arm64 \
+              zero-native-linux-musl-x64 \
+              zero-native-win32-arm64.exe \
+              zero-native-win32-x64.exe
+            do
+              if ! printf '%s\n' "$EXISTING_ASSETS" | grep -Fx "$asset" >/dev/null; then
+                echo "Missing release asset: $asset"
+                missing=1
+              fi
+            done
+
+            if [ "$missing" -eq 0 ]; then
               echo "GitHub release $TAG exists with native assets"
               echo "needs_github_release=false" >> "$GITHUB_OUTPUT"
             else
@@ -92,11 +110,33 @@ jobs:
 
       - name: Build native release asset
         run: |
-          zig build
           mkdir -p /tmp/zero-native-release
-          cp zig-out/bin/zero-native /tmp/zero-native-release/zero-native-darwin-arm64
-          chmod 755 /tmp/zero-native-release/zero-native-darwin-arm64
-          (cd /tmp/zero-native-release && shasum -a 256 zero-native-darwin-arm64 > CHECKSUMS.txt)
+
+          build_asset() {
+            target="$1"
+            name="$2"
+            rm -rf zig-out
+            zig build -Dtarget="$target" -Doptimize=ReleaseSmall
+
+            src="zig-out/bin/zero-native"
+            case "$name" in
+              *.exe) src="${src}.exe" ;;
+            esac
+
+            cp "$src" "/tmp/zero-native-release/$name"
+            chmod 755 "/tmp/zero-native-release/$name"
+          }
+
+          build_asset aarch64-macos zero-native-darwin-arm64
+          build_asset x86_64-macos zero-native-darwin-x64
+          build_asset aarch64-linux-gnu zero-native-linux-arm64
+          build_asset x86_64-linux-gnu zero-native-linux-x64
+          build_asset aarch64-linux-musl zero-native-linux-musl-arm64
+          build_asset x86_64-linux-musl zero-native-linux-musl-x64
+          build_asset aarch64-windows zero-native-win32-arm64.exe
+          build_asset x86_64-windows zero-native-win32-x64.exe
+
+          (cd /tmp/zero-native-release && shasum -a 256 zero-native-* > CHECKSUMS.txt)
 
       - name: Create GitHub Release
         run: |
@@ -113,7 +153,7 @@ jobs:
           fi
 
           gh release upload "$TAG" \
-            /tmp/zero-native-release/zero-native-darwin-arm64 \
+            /tmp/zero-native-release/zero-native-* \
             /tmp/zero-native-release/CHECKSUMS.txt \
             --clobber
         env:
