@@ -2,7 +2,7 @@ const std = @import("std");
 
 const PlatformOption = enum {
     auto,
-    @"null",
+    null,
     macos,
     linux,
 };
@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
     const cef_auto_install_override = b.option(bool, "cef-auto-install", "Override app.zon CEF auto-install setting");
     const zero_native_path = b.option([]const u8, "zero-native-path", "Path to the zero-native framework checkout") orelse default_zero_native_path;
     const selected_platform: PlatformOption = switch (platform_option) {
-        .auto => if (target.result.os.tag == .macos) .macos else if (target.result.os.tag == .linux) .linux else .@"null",
+        .auto => if (target.result.os.tag == .macos) .macos else if (target.result.os.tag == .linux) .linux else .null,
         else => platform_option,
     };
     if (selected_platform == .macos and target.result.os.tag != .macos) {
@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
     const options = b.addOptions();
     options.addOption([]const u8, "platform", switch (selected_platform) {
         .auto => unreachable,
-        .@"null" => "null",
+        .null => "null",
         .macos => "macos",
         .linux => "linux",
     });
@@ -174,17 +174,23 @@ fn linkPlatform(b: *std.Build, app_mod: *std.Build.Module, exe: *std.Build.Step.
 
 fn addCefRuntimeRunFiles(b: *std.Build, run: *std.Build.Step.Run, exe: *std.Build.Step.Compile, web_engine: WebEngineOption, cef_dir: []const u8) void {
     if (web_engine != .chromium) return;
-    const copy = b.addSystemCommand(&.{ "sh", "-c", b.fmt(
-        \\set -e
-        \\exe="$0"
-        \\exe_dir="$(dirname "$exe")"
-        \\mkdir -p "$exe_dir/Frameworks" &&
-        \\cp -R "{s}/Release/Chromium Embedded Framework.framework" "$exe_dir/Frameworks/" &&
-        \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libEGL.dylib" "$exe_dir/" &&
-        \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libGLESv2.dylib" "$exe_dir/" &&
-        \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libvk_swiftshader.dylib" "$exe_dir/" &&
-        \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/vk_swiftshader_icd.json" "$exe_dir/"
-    , .{ cef_dir, cef_dir, cef_dir, cef_dir, cef_dir }) });
+    const copy = b.addSystemCommand(&.{
+        "sh", "-c",
+        b.fmt(
+            \\set -e
+            \\exe="$0"
+            \\exe_dir="$(dirname "$exe")"
+            \\rm -rf "zig-out/Frameworks/Chromium Embedded Framework.framework" "zig-out/bin/Frameworks/Chromium Embedded Framework.framework" ".zig-cache/o/Frameworks/Chromium Embedded Framework.framework" &&
+            \\mkdir -p "zig-out/Frameworks" "zig-out/bin/Frameworks" ".zig-cache/o/Frameworks" "$exe_dir" &&
+            \\cp -R "{s}/Release/Chromium Embedded Framework.framework" "zig-out/Frameworks/" &&
+            \\cp -R "{s}/Release/Chromium Embedded Framework.framework" "zig-out/bin/Frameworks/" &&
+            \\cp -R "{s}/Release/Chromium Embedded Framework.framework" ".zig-cache/o/Frameworks/" &&
+            \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libEGL.dylib" "$exe_dir/" &&
+            \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libGLESv2.dylib" "$exe_dir/" &&
+            \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/libvk_swiftshader.dylib" "$exe_dir/" &&
+            \\cp "{s}/Release/Chromium Embedded Framework.framework/Libraries/vk_swiftshader_icd.json" "$exe_dir/"
+        , .{ cef_dir, cef_dir, cef_dir, cef_dir, cef_dir, cef_dir, cef_dir }),
+    });
     copy.addFileArg(exe.getEmittedBin());
     run.step.dependOn(&copy.step);
 }
