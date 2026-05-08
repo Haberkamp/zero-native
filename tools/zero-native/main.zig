@@ -2,7 +2,7 @@ const std = @import("std");
 const automation_cli = @import("automation.zig");
 const tooling = @import("tooling");
 
-const version = "0.1.0";
+const version = "0.1.1";
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
