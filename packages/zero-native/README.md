@@ -1,6 +1,6 @@
 # zero-native
 
-CLI tools for [zero-native](https://github.com/vercel-labs/zero-native), a Zig desktop app shell built around the system WebView.
+CLI tools for [zero-native](https://zero-native.dev), a Zig desktop app shell built around the system WebView.
 
 ## Install
 
@@ -22,7 +22,7 @@ The first run installs the generated frontend dependencies automatically.
 
 | Command | Description |
 |---------|-------------|
-| `zero-native init <name> --frontend <next\|vite\|react\|svelte\|vue>` | Scaffold a new zero-native project |
+| `zero-native init [name] --frontend <next\|vite\|react\|svelte\|vue>` | Scaffold a new zero-native project |
 | `zero-native dev --binary <path>` | Start the app with a managed frontend dev server |
 | `zero-native doctor` | Check host environment, WebView, manifest, and CEF |
 | `zero-native validate` | Validate `app.zon` against the manifest schema |
@@ -33,4 +33,4 @@ The first run installs the generated frontend dependencies automatically.
 
 ## More
 
-See the [full documentation](https://github.com/vercel-labs/zero-native) for details on the app model, bridge, security, and packaging.
+See the [full documentation](https://zero-native.dev) for details on the app model, bridge, security, and packaging.

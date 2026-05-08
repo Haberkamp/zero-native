@@ -1,6 +1,6 @@
 {
   "name": "zero-native",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Zig desktop app shell with WebView — CLI tools",
   "type": "module",
   "bin": {
@@ -17,7 +17,7 @@
     "type": "git",
     "url": "git+https://github.com/vercel-labs/zero-native.git"
   },
-  "homepage": "https://github.com/vercel-labs/zero-native",
+  "homepage": "https://zero-native.dev",
   "scripts": {
     "version": "npm run version:sync && git add ../../tools/zero-native/main.zig",
     "version:sync": "node scripts/sync-version.js",

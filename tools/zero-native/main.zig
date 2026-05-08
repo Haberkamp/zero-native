@@ -2,7 +2,7 @@ const std = @import("std");
 const automation_cli = @import("automation.zig");
 const tooling = @import("tooling");
 
-const version = "0.1.2";
+const version = "0.1.3";
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
@@ -15,10 +15,12 @@ pub fn main(init: std.process.Init) !void {
     } else if (std.mem.eql(u8, command, "--version") or std.mem.eql(u8, command, "version")) {
         std.debug.print("zero-native {s}\n", .{version});
     } else if (std.mem.eql(u8, command, "init")) {
-        const destination = positionalArg(args[2..]) orelse return fail("usage: zero-native init <path> --frontend <next|vite|react|svelte|vue>");
-        const frontend_str = try flagValue(args, "--frontend") orelse return fail("--frontend is required: next, vite, react, svelte, vue");
-        const frontend = tooling.templates.Frontend.parse(frontend_str) orelse return fail("invalid --frontend value: use next, vite, react, svelte, or vue");
-        try tooling.templates.writeDefaultApp(allocator, init.io, destination, .{ .app_name = std.fs.path.basename(destination), .frontend = frontend });
+        const destination = positionalArg(args[2..]) orelse ".";
+        const frontend_str = flagValue(args, "--frontend") catch fail("--frontend requires a value: next, vite, react, svelte, vue") orelse fail("--frontend is required: next, vite, react, svelte, vue");
+        const frontend = tooling.templates.Frontend.parse(frontend_str) orelse fail("invalid --frontend value: use next, vite, react, svelte, or vue");
+        const app_name, const free_app_name = try initAppName(allocator, init.io, destination);
+        defer if (free_app_name) allocator.free(app_name);
+        try tooling.templates.writeDefaultApp(allocator, init.io, destination, .{ .app_name = app_name, .frontend = frontend });
         std.debug.print("created zero-native app at {s} (frontend: {s})\n", .{ destination, frontend_str });
     } else if (std.mem.eql(u8, command, "doctor")) {
         try tooling.doctor.run(allocator, init.io, init.environ_map, args[2..]);
@@ -48,9 +50,9 @@ pub fn main(init: std.process.Init) !void {
         const manifest_path = try flagValue(args, "--manifest") orelse "app.zon";
         const metadata = try tooling.manifest.readMetadata(allocator, init.io, manifest_path);
         const target_name = try flagValue(args, "--target") orelse "macos";
-        const target = tooling.package.PackageTarget.parse(target_name) orelse return fail("invalid package target");
+        const target = tooling.package.PackageTarget.parse(target_name) orelse fail("invalid package target");
         const web_engine_override = if (try flagValue(args, "--web-engine")) |value|
-            tooling.web_engine.Engine.parse(value) orelse return fail("invalid web engine")
+            tooling.web_engine.Engine.parse(value) orelse fail("invalid web engine")
         else
             null;
         const web_engine = try tooling.web_engine.resolve(.{ .web_engine = metadata.web_engine, .cef = metadata.cef }, .{
@@ -59,7 +61,7 @@ pub fn main(init: std.process.Init) !void {
             .cef_auto_install = if (flagBool(args, "--cef-auto-install")) true else null,
         });
         const signing_name = try flagValue(args, "--signing") orelse "none";
-        const signing = tooling.package.SigningMode.parse(signing_name) orelse return fail("invalid signing mode");
+        const signing = tooling.package.SigningMode.parse(signing_name) orelse fail("invalid signing mode");
         const output_dir = try flagValue(args, "--output") orelse if (args.len >= 3 and args[2].len > 0 and args[2][0] != '-') args[2] else "zig-out/package/zero-native-local.app";
         const archive = flagBool(args, "--archive");
         if (web_engine.engine == .chromium and web_engine.cef_auto_install) {
@@ -135,7 +137,7 @@ fn usage() void {
         \\usage: zero-native <command>
         \\
         \\commands:
-        \\  init <path> --frontend <next|vite|react|svelte|vue>
+        \\  init [path] --frontend <next|vite|react|svelte|vue>
         \\  cef install|path|doctor [--dir path] [--version version] [--source prepared|official] [--force]
         \\  doctor [--strict] [--manifest app.zon] [--web-engine system|chromium] [--cef-dir path] [--cef-auto-install]
         \\  validate [app.zon]
@@ -152,9 +154,21 @@ fn usage() void {
     , .{});
 }
 
-fn fail(message: []const u8) error{InvalidArguments} {
+fn fail(message: []const u8) noreturn {
     std.debug.print("{s}\n", .{message});
-    return error.InvalidArguments;
+    std.process.exit(1);
+}
+
+fn initAppName(allocator: std.mem.Allocator, io: std.Io, destination: []const u8) !struct { []const u8, bool } {
+    if (!std.mem.eql(u8, destination, ".")) {
+        return .{ std.fs.path.basename(destination), false };
+    }
+
+    const cwd = try std.process.currentPathAlloc(io, allocator);
+    defer allocator.free(cwd);
+    const basename = std.fs.path.basename(cwd);
+    if (basename.len == 0) return .{ try allocator.dupe(u8, "zero-native-app"), true };
+    return .{ try allocator.dupe(u8, basename), true };
 }
 
 fn flagValue(args: []const []const u8, name: []const u8) error{MissingFlagValue}!?[]const u8 {

@@ -2,9 +2,22 @@
 
 All notable changes to zero-native will be documented in this file.
 
-## 0.1.2
+## 0.1.3
 
 <!-- release:start -->
+
+### Bug Fixes
+
+- **CLI package homepage** - Point npm package metadata at `https://zero-native.dev`.
+- **Current-directory init** - Support `zero-native init --frontend <framework>` as shorthand for scaffolding into the current directory.
+- **CLI usage errors** - Exit cleanly for invalid CLI arguments instead of printing Zig stack traces for expected user input mistakes.
+
+### Contributors
+
+- @ctate
+<!-- release:end -->
+
+## 0.1.2
 
 ### Bug Fixes
 
@@ -14,7 +27,6 @@ All notable changes to zero-native will be documented in this file.
 ### Contributors
 
 - @ctate
-<!-- release:end -->
 
 ## 0.1.1
 
