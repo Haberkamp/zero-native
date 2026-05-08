@@ -4,6 +4,26 @@ Build native desktop apps with web UI. Tiny binaries. Minimal memory. Instant re
 
 zero-native is a Zig desktop app shell for modern web frontends. Use the platform WebView when you want the smallest possible app, or bundle Chromium through CEF when rendering consistency matters.
 
+## Quick Start
+
+Install the CLI:
+
+```bash
+npm install -g zero-native
+```
+
+Create and run an app:
+
+```bash
+zero-native init my_app --frontend next
+cd my_app
+zig build run
+```
+
+The first run installs frontend dependencies, builds the generated native shell, and opens a desktop window rendering your web UI.
+
+Read the full guide at [zero-native.dev/quick-start](https://zero-native.dev/quick-start).
+
 ## Why zero-native
 
 ### Tiny and fast
@@ -29,26 +49,6 @@ The WebView is treated as untrusted by default. Native commands, permissions, na
 ## Status
 
 zero-native is pre-release. The current beta focus is macOS desktop apps, with Linux system WebView support available and Windows work in progress. Chromium/CEF support is currently macOS-focused.
-
-## Quick Start
-
-Install the CLI:
-
-```bash
-npm install -g zero-native
-```
-
-Create and run an app:
-
-```bash
-zero-native init my_app --frontend next
-cd my_app
-zig build run
-```
-
-The first run installs frontend dependencies, builds the generated native shell, and opens a desktop window rendering your web UI.
-
-Read the full guide at [zero-native.dev/quick-start](https://zero-native.dev/quick-start).
 
 ## Core Concepts
 
