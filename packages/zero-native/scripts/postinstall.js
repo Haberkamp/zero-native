@@ -85,15 +85,18 @@ async function downloadFile(url, dest, onProgress = () => {}) {
         if (response.statusCode === 301 || response.statusCode === 302) {
           const location = response.headers.location;
           if (!location) {
+            response.resume();
             cleanup(new Error('Redirect with no Location header'));
             return;
           }
           const resolved = new URL(location, url).href;
+          response.resume();
           request(resolved, redirectCount + 1);
           return;
         }
 
         if (response.statusCode !== 200) {
+          response.resume();
           cleanup(new Error(`Failed to download: HTTP ${response.statusCode}`));
           return;
         }
@@ -128,13 +131,16 @@ async function downloadText(url) {
         if (response.statusCode === 301 || response.statusCode === 302) {
           const location = response.headers.location;
           if (!location) {
+            response.resume();
             reject(new Error('Redirect with no Location header'));
             return;
           }
+          response.resume();
           request(new URL(location, url).href, redirectCount + 1);
           return;
         }
         if (response.statusCode !== 200) {
+          response.resume();
           reject(new Error(`HTTP ${response.statusCode}`));
           return;
         }
