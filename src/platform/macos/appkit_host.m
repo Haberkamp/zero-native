@@ -411,16 +411,25 @@ static NSString *ZeroNativeMimeTypeForPath(NSString *path) {
     return @"application/octet-stream";
 }
 
+static BOOL ZeroNativeDirectoryExists(NSString *path) {
+    BOOL isDirectory = NO;
+    return path.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDirectory] && isDirectory;
+}
+
 static NSString *ZeroNativeResolvedAssetRoot(NSString *rootPath) {
+    NSString *resourcePath = [NSBundle mainBundle].resourcePath;
+    BOOL isAppBundle = [[NSBundle mainBundle].bundlePath.pathExtension.lowercaseString isEqualToString:@"app"];
     if (rootPath.length == 0 || [rootPath isEqualToString:@"."]) {
-        return [NSBundle mainBundle].resourcePath ?: [[NSFileManager defaultManager] currentDirectoryPath];
+        return (isAppBundle && resourcePath.length > 0) ? resourcePath : [[NSFileManager defaultManager] currentDirectoryPath];
     }
     if (rootPath.isAbsolutePath) return rootPath;
-    NSString *resourcePath = [NSBundle mainBundle].resourcePath;
+    NSString *cwdPath = [[[NSFileManager defaultManager] currentDirectoryPath] stringByAppendingPathComponent:rootPath];
+    if (!isAppBundle && ZeroNativeDirectoryExists(cwdPath)) return cwdPath;
     if (resourcePath.length > 0) {
-        return [resourcePath stringByAppendingPathComponent:rootPath];
+        NSString *resourceRoot = [resourcePath stringByAppendingPathComponent:rootPath];
+        if (isAppBundle || ZeroNativeDirectoryExists(resourceRoot)) return resourceRoot;
     }
-    return [[[NSFileManager defaultManager] currentDirectoryPath] stringByAppendingPathComponent:rootPath];
+    return cwdPath;
 }
 
 static BOOL ZeroNativePathHasUnsafeSegment(NSString *path) {

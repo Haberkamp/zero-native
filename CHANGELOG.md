@@ -2,6 +2,19 @@
 
 All notable changes to zero-native will be documented in this file.
 
+## 0.1.5
+
+<!-- release:start -->
+
+### Bug Fixes
+
+- **macOS local asset loading** - Prefer current-directory asset roots during local `zig build run` so Vite-based examples render their production bundles instead of blank windows.
+
+### Contributors
+
+- @ctate
+<!-- release:end -->
+
 ## 0.1.4
 
 <!-- release:start -->
