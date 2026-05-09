@@ -921,6 +921,7 @@ fn writeSvelteFrontend(allocator: std.mem.Allocator, io: std.Io, app_dir: std.Io
     const index_html = try svelteIndexHtml(allocator, names);
     defer allocator.free(index_html);
     try writeFile(app_dir, io, "frontend/package.json", package_json);
+    try writeFile(app_dir, io, "frontend/svelte.config.js", svelteConfig());
     try writeFile(app_dir, io, "frontend/vite.config.js", svelteViteConfig());
     try writeFile(app_dir, io, "frontend/index.html", index_html);
     try writeFile(app_dir, io, "frontend/src/main.js", svelteMainJs());
@@ -957,14 +958,15 @@ fn nextPackageJson(allocator: std.mem.Allocator, names: TemplateNames) ![]const 
         \\    "start": "next start"
         \\  },
         \\  "dependencies": {
-        \\    "next": "^15.0.0",
-        \\    "react": "^19.0.0",
-        \\    "react-dom": "^19.0.0"
+        \\    "next": "^16.2.6",
+        \\    "react": "^19.2.6",
+        \\    "react-dom": "^19.2.6"
         \\  },
         \\  "devDependencies": {
-        \\    "@types/react": "^19.0.0",
-        \\    "@types/react-dom": "^19.0.0",
-        \\    "typescript": "^5.0.0"
+        \\    "@types/node": "^25.6.2",
+        \\    "@types/react": "^19.2.14",
+        \\    "@types/react-dom": "^19.2.3",
+        \\    "typescript": "^6.0.3"
         \\  }
         \\}
         \\
@@ -999,12 +1001,12 @@ fn nextTsconfig() []const u8 {
     \\    "moduleResolution": "bundler",
     \\    "resolveJsonModule": true,
     \\    "isolatedModules": true,
-    \\    "jsx": "preserve",
+    \\    "jsx": "react-jsx",
     \\    "incremental": true,
     \\    "plugins": [{ "name": "next" }],
     \\    "paths": { "@/*": ["./app/*"] }
     \\  },
-    \\  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+    \\  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
     \\  "exclude": ["node_modules"]
     \\}
     \\
@@ -1089,7 +1091,7 @@ fn vitePackageJson(allocator: std.mem.Allocator, names: TemplateNames) ![]const 
         \\    "preview": "vite preview"
         \\  },
         \\  "devDependencies": {
-        \\    "vite": "^6.0.0"
+        \\    "vite": "^8.0.11"
         \\  }
         \\}
         \\
@@ -1222,12 +1224,12 @@ fn reactPackageJson(allocator: std.mem.Allocator, names: TemplateNames) ![]const
         \\    "preview": "vite preview"
         \\  },
         \\  "dependencies": {
-        \\    "react": "^19.0.0",
-        \\    "react-dom": "^19.0.0"
+        \\    "react": "^19.2.6",
+        \\    "react-dom": "^19.2.6"
         \\  },
         \\  "devDependencies": {
-        \\    "@vitejs/plugin-react": "^4.0.0",
-        \\    "vite": "^6.0.0"
+        \\    "@vitejs/plugin-react": "^6.0.1",
+        \\    "vite": "^8.0.11"
         \\  }
         \\}
         \\
@@ -1338,11 +1340,11 @@ fn sveltePackageJson(allocator: std.mem.Allocator, names: TemplateNames) ![]cons
         \\    "preview": "vite preview"
         \\  },
         \\  "dependencies": {
-        \\    "svelte": "^5.0.0"
+        \\    "svelte": "^5.55.5"
         \\  },
         \\  "devDependencies": {
-        \\    "@sveltejs/vite-plugin-svelte": "^4.0.0",
-        \\    "vite": "^6.0.0"
+        \\    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+        \\    "vite": "^8.0.11"
         \\  }
         \\}
         \\
@@ -1358,6 +1360,13 @@ fn svelteViteConfig() []const u8 {
     \\export default defineConfig({
     \\  plugins: [svelte()],
     \\});
+    \\
+    ;
+}
+
+fn svelteConfig() []const u8 {
+    return
+    \\export default {};
     \\
     ;
 }
@@ -1441,11 +1450,11 @@ fn vuePackageJson(allocator: std.mem.Allocator, names: TemplateNames) ![]const u
         \\    "preview": "vite preview"
         \\  },
         \\  "dependencies": {
-        \\    "vue": "^3.5.0"
+        \\    "vue": "^3.5.34"
         \\  },
         \\  "devDependencies": {
-        \\    "@vitejs/plugin-vue": "^5.0.0",
-        \\    "vite": "^6.0.0"
+        \\    "@vitejs/plugin-vue": "^6.0.6",
+        \\    "vite": "^8.0.11"
         \\  }
         \\}
         \\
@@ -1722,10 +1731,12 @@ fn normalizePackageName(allocator: std.mem.Allocator, value: []const u8) ![]cons
 }
 
 fn normalizeModuleName(allocator: std.mem.Allocator, value: []const u8) ![]const u8 {
+    const max_zig_package_name_len = 32;
     var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
     if (value.len == 0 or isAsciiDigit(value[0])) try out.appendSlice(allocator, "app_");
     for (value) |ch| {
+        if (out.items.len >= max_zig_package_name_len) break;
         if (isAsciiAlpha(ch) or isAsciiDigit(ch)) {
             try out.append(allocator, std.ascii.toLower(ch));
         } else {
@@ -1733,6 +1744,14 @@ fn normalizeModuleName(allocator: std.mem.Allocator, value: []const u8) ![]const
         }
     }
     return out.toOwnedSlice(allocator);
+}
+
+test "normalizeModuleName caps Zig package names" {
+    const module_name = try normalizeModuleName(std.testing.allocator, "scaffold-package-smoke-1778284313");
+    defer std.testing.allocator.free(module_name);
+
+    try std.testing.expect(module_name.len <= 32);
+    try std.testing.expectEqualStrings("scaffold_package_smoke_177828431", module_name);
 }
 
 fn displayName(allocator: std.mem.Allocator, value: []const u8) ![]const u8 {

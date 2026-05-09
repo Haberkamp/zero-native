@@ -2,7 +2,7 @@ const std = @import("std");
 const automation_cli = @import("automation.zig");
 const tooling = @import("tooling");
 
-const version = "0.1.3";
+const version = "0.1.4";
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
@@ -20,7 +20,9 @@ pub fn main(init: std.process.Init) !void {
         const frontend = tooling.templates.Frontend.parse(frontend_str) orelse fail("invalid --frontend value: use next, vite, react, svelte, or vue");
         const app_name, const free_app_name = try initAppName(allocator, init.io, destination);
         defer if (free_app_name) allocator.free(app_name);
-        try tooling.templates.writeDefaultApp(allocator, init.io, destination, .{ .app_name = app_name, .frontend = frontend });
+        const framework_path, const free_framework_path = try initFrameworkPath(allocator, init.io);
+        defer if (free_framework_path) allocator.free(framework_path);
+        try tooling.templates.writeDefaultApp(allocator, init.io, destination, .{ .app_name = app_name, .framework_path = framework_path, .frontend = frontend });
         std.debug.print("created zero-native app at {s} (frontend: {s})\n", .{ destination, frontend_str });
     } else if (std.mem.eql(u8, command, "doctor")) {
         try tooling.doctor.run(allocator, init.io, init.environ_map, args[2..]);
@@ -169,6 +171,37 @@ fn initAppName(allocator: std.mem.Allocator, io: std.Io, destination: []const u8
     const basename = std.fs.path.basename(cwd);
     if (basename.len == 0) return .{ try allocator.dupe(u8, "zero-native-app"), true };
     return .{ try allocator.dupe(u8, basename), true };
+}
+
+fn initFrameworkPath(allocator: std.mem.Allocator, io: std.Io) !struct { []const u8, bool } {
+    if (try frameworkRootFromExecutable(allocator, io)) |path| return .{ path, true };
+    return .{ ".", false };
+}
+
+fn frameworkRootFromExecutable(allocator: std.mem.Allocator, io: std.Io) !?[]const u8 {
+    var buffer: [std.fs.max_path_bytes]u8 = undefined;
+    const executable_len = std.process.executablePath(io, &buffer) catch return null;
+    const executable_path = buffer[0..executable_len];
+    const bin_dir = std.fs.path.dirname(executable_path) orelse return null;
+    const package_root = std.fs.path.dirname(bin_dir) orelse return null;
+
+    if (try hasFrameworkRoot(allocator, io, package_root)) {
+        return try allocator.dupe(u8, package_root);
+    }
+    if (std.fs.path.dirname(package_root)) |repo_root| {
+        if (try hasFrameworkRoot(allocator, io, repo_root)) {
+            return try allocator.dupe(u8, repo_root);
+        }
+    }
+    return null;
+}
+
+fn hasFrameworkRoot(allocator: std.mem.Allocator, io: std.Io, root: []const u8) !bool {
+    const root_zig = try std.fs.path.join(allocator, &.{ root, "src", "root.zig" });
+    defer allocator.free(root_zig);
+    var file = std.Io.Dir.cwd().openFile(io, root_zig, .{}) catch return false;
+    defer file.close(io);
+    return true;
 }
 
 fn flagValue(args: []const []const u8, name: []const u8) error{MissingFlagValue}!?[]const u8 {

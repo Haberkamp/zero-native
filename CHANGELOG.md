@@ -2,6 +2,23 @@
 
 All notable changes to zero-native will be documented in this file.
 
+## 0.1.4
+
+<!-- release:start -->
+
+### Bug Fixes
+
+- **Scaffolded app builds** - Ship the framework source tree in the npm package and make `zero-native init` point generated apps at the installed package root so `zig build run` can resolve `src/root.zig`.
+- **Long scaffold names** - Keep generated Zig package names within Zig's 32-character manifest limit.
+- **Next scaffold builds** - Include the Node.js type package that Next expects for TypeScript projects.
+- **Frontend dependency versions** - Generate projects with current Next, React, Vite, Vue, Svelte, and plugin versions.
+- **Svelte scaffold builds** - Use the matching Svelte Vite plugin in generated Svelte projects.
+
+### Contributors
+
+- @ctate
+<!-- release:end -->
+
 ## 0.1.3
 
 <!-- release:start -->
